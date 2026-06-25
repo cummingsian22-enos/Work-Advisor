@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ian's Work Advisor</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, 'Inter', system-ui, sans-serif;
+    background: #F7F8FC;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* API Key screen */
+  #api-screen {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 24px;
+    gap: 16px;
+  }
+  #api-screen .icon {
+    width: 56px; height: 56px; border-radius: 14px;
+    background: linear-gradient(135deg, #6B7FD7, #4A90D9);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px;
+  }
+  #api-screen h1 { font-size: 20px; font-weight: 700; color: #1C2340; }
+  #api-screen p { font-size: 13px; color: #6B7A9F; text-align: center; line-height: 1.6; max-width: 300px; }
+  #api-screen a { color: #6B7FD7; }
+  #api-key-input {
+    width: 100%; max-width: 340px;
+    padding: 12px 16px; border-radius: 12px;
+    border: 1.5px solid #DDE1EF; font-size: 14px;
+    font-family: inherit; outline: none; color: #1C2340;
+    background: #fff;
+  }
+  #api-key-input:focus { border-color: #6B7FD7; }
+  #save-key-btn {
+    width: 100%; max-width: 340px;
+    padding: 13px; border-radius: 12px; border: none;
+    background: linear-gradient(135deg, #6B7FD7, #4A90D9);
+    color: #fff; font-size: 15px; font-weight: 600;
+    font-family: inherit; cursor: pointer;
+  }
+  #api-error { color: #E05555; font-size: 13px; display: none; }
+
+  /* Main app */
+  #app { display: none; flex-direction: column; height: 100dvh; }
+
+  /* Header */
+  .header {
+    background: #1C2340;
+    padding: 14px 20px 0;
+    flex-shrink: 0;
+  }
+  .header-top {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
+  }
+  .header-icon {
+    width: 34px; height: 34px; border-radius: 8px;
+    background: linear-gradient(135deg, #6B7FD7, #4A90D9);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0;
+  }
+  .header-title { color: #fff; font-weight: 600; font-size: 15px; }
+  .header-sub { color: #8B9BBF; font-size: 11px; margin-top: 1px; }
+  .reset-btn {
+    margin-left: auto; background: transparent; border: 1px solid #3A4560;
+    color: #8B9BBF; border-radius: 8px; padding: 5px 10px;
+    font-size: 11px; cursor: pointer; font-family: inherit;
+  }
+
+  .tabs { display: flex; gap: 2px; }
+  .tab {
+    padding: 8px 16px; border: none; background: transparent;
+    font-family: inherit; font-size: 13px; font-weight: 500;
+    color: #6B7A9F; border-bottom: 2px solid transparent;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .tab.active { color: #fff; border-bottom-color: #6B7FD7; }
+
+  /* Messages */
+  .messages {
+    flex: 1; overflow-y: auto;
+    padding: 20px 16px 12px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+
+  .msg-row { display: flex; }
+  .msg-row.user { justify-content: flex-end; }
+  .msg-row.assistant { justify-content: flex-start; }
+
+  .avatar {
+    width: 28px; height: 28px; border-radius: 7px;
+    background: linear-gradient(135deg, #6B7FD7, #4A90D9);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; flex-shrink: 0;
+    margin-right: 8px; margin-top: 2px;
+  }
+
+  .bubble {
+    max-width: 80%;
+    padding: 11px 14px;
+    font-size: 14px; line-height: 1.65;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .bubble.user {
+    background: #1C2340; color: #fff;
+    border-radius: 16px 16px 4px 16px;
+  }
+  .bubble.assistant {
+    background: #fff; color: #1C2340;
+    border-radius: 4px 16px 16px 16px;
+  }
+
+  .typing { display: flex; align-items: center; gap: 4px; padding: 12px 14px; }
+  .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #6B7FD7;
+    animation: bounce 1.2s infinite;
+  }
+  .dot:nth-child(2) { animation-delay: 0.2s; }
+  .dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce {
+    0%,80%,100% { transform: translateY(0); }
+    40% { transform: translateY(-5px); }
+  }
+
+  /* Input area */
+  .input-area {
+    padding: 10px 16px 20px;
+    flex-shrink: 0;
+    background: #F7F8FC;
+  }
+
+  .quick-prompts {
+    display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px;
+  }
+  .qp-btn {
+    background: #fff; border: 1px solid #DDE1EF;
+    border-radius: 20px; padding: 5px 12px;
+    font-size: 12px; color: #4A5578;
+    cursor: pointer; font-family: inherit;
+  }
+
+  .input-box {
+    display: flex; gap: 8px; align-items: flex-end;
+    background: #fff; border-radius: 14px;
+    padding: 9px 9px 9px 14px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    border: 1.5px solid #DDE1EF;
+  }
+  .input-box:focus-within { border-color: #6B7FD7; }
+
+  #msg-input {
+    flex: 1; border: none; outline: none; resize: none;
+    font-size: 14px; line-height: 1.5; color: #1C2340;
+    font-family: inherit; background: transparent;
+    max-height: 120px; overflow-y: auto;
+  }
+
+  #send-btn {
+    width: 34px; height: 34px; border-radius: 9px; border: none;
+    background: linear-gradient(135deg, #6B7FD7, #4A90D9);
+    color: #fff; font-size: 16px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: opacity 0.15s;
+  }
+  #send-btn:disabled { opacity: 0.35; cursor: default; }
+
+  .hint { text-align: center; font-size: 11px; color: #B0B8D4; margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<!-- API Key Setup Screen -->
+<div id="api-screen">
+  <div class="icon">💼</div>
+  <h1>Work Advisor</h1>
+  <p>Enter your Anthropic API key to get started. It's saved only on this device.</p>
+  <p>Get your key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> → API Keys</p>
+  <input id="api-key-input" type="password" placeholder="sk-ant-..." />
+  <div id="api-error">Key doesn't look right — should start with sk-ant-</div>
+  <button id="save-key-btn">Save & Start</button>
+</div>
+
+<!-- Main App -->
+<div id="app">
+  <div class="header">
+    <div class="header-top">
+      <div class="header-icon" id="header-icon">💼</div>
+      <div>
+        <div class="header-title" id="header-title">Work Advisor</div>
+        <div class="header-sub">Ian Cummings · Enos Sales</div>
+      </div>
+      <button class="reset-btn" onclick="resetKey()">Change Key</button>
+    </div>
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab(0)">💼 Advisor</button>
+      <button class="tab" onclick="switchTab(1)">✏️ LinkedIn</button>
+    </div>
+  </div>
+
+  <div class="messages" id="messages"></div>
+
+  <div class="input-area">
+    <div class="quick-prompts" id="quick-prompts"></div>
+    <div class="input-box">
+      <textarea id="msg-input" rows="1" placeholder="Ask anything..."></textarea>
+      <button id="send-btn" onclick="sendMessage()">↑</button>
+    </div>
+    <div class="hint">Return to send</div>
+  </div>
+</div>
+
+<script>
+const SYSTEM_ADVISOR = `You are Ian Cummings' personal work advisor. You know everything about his job, role, contacts, and current projects. Give him practical, grounded advice — like a smart colleague who knows his world.
+
+BACKGROUND
+- Graduated UMass Dartmouth (Marketing)
+- Transitioned from Enos delivery tech into outside sales/business development
+- Main focus: diabetic supplies and CGMs (Dexcom, Libre, True Metrix kits)
+- Reports to his uncle/boss Jon
+
+INTERNAL CONTACTS
+- Tammi: billing/documentation expert — knowledgeable and practical, go-to for what's actually required vs. just helpful
+- Stacy (Enos): billing/documentation — tends to overcomplicate, asks for more than Medicare requires
+- Jon (boss/uncle): likes concise, structured updates. Format: Priorities, Opportunities, What Needs to Move Forward, Support That May Be Helpful, Goals. No buzzwords, no fluff.
+
+KEY EXTERNAL CONTACTS — SOUTHCOAST
+- Scott: main Southcoast/St. Luke's Pharmacy contact; cooperative, wants clear documentation requirements upfront
+- Stacy Arsenault: Southcoast contact Scott looped in for documentation/workflow
+- Maribeth: Southcoast contact for reprinting/obtaining corrected prescriptions
+- St. Luke's / SLH pharmacy team: receptive to updated checklist, CMN option, examples
+
+SALES TERRITORY
+- PCP offices, internal medicine, endocrinology, diabetes clinics
+- Rhode Island, Worcester, Springfield, Western MA, South Shore, Southeastern MA
+
+SOUTHCOAST PROJECT (TOP PRIORITY)
+- Goal: Southcoast sends diabetic supply referrals to Enos (True Metrix glucometer, test strips, lancets — eventually CGMs)
+- Key insight: a well-written prescription can replace a CMN if it contains diagnosis, quantity, testing frequency, provider signature, medical necessity
+- REQUIRED to bill: diabetes diagnosis, testing frequency, quantity, provider signature, chart notes
+- HELPFUL but not required: phone number, extra demographics
+- CMN/Order Form draft done, waiting for Tammi feedback
+- Open question: can remaining equipment be added to one valid prescription? (Tammi flagged compliance concern with handwritten additions)
+
+CGM KNOWLEDGE
+- Patients with hypoglycemia but NO diabetes can qualify for a CGM
+- Examples: insulinomas, hyperinsulinemia, post gastric bypass, post-surgical, severe recurrent hypoglycemia
+
+SALES APPROACH
+- Month 1: introductions. Month 2: follow-ups. Month 3+: trusted resource, problem solver
+- Offices now recognize him, more receptive on repeat visits
+
+LINKEDIN
+- What works: provider frustration with insurance/documentation, helping patients access tech
+- What doesn't: product-focused, corporate tone
+
+HOW TO ADVISE:
+- Direct and practical, no fluff
+- Specific suggestions, not generic advice
+- Match his tone: conversational, professional, not corporate or cheesy
+- Briefly acknowledge frustration then move to solutions`;
+
+const SYSTEM_LINKEDIN = `You are a LinkedIn post coach for Ian Cummings, a medical supply sales rep (diabetic supplies, CGMs) at Enos.
+
+Ian's voice: conversational, professional. NOT corporate, cheesy, or LinkedIn-guru. He sounds like a real person.
+
+What performs well:
+- Real moments from office visits or patient situations
+- Provider frustration with insurance/documentation barriers
+- Helping patients access technology — not selling products
+- Specific details, not generic observations
+
+COACHING FRAMEWORK:
+- IDEA: Unique angle only Ian could tell? Or could any consultant write it?
+- HOOK: Makes you stop scrolling? Grounded/attributed if it's a quote?
+- BODY: Specific details (what provider, what denied, what he did)? Not vague complaints everyone already knows?
+- DISMOUNT: Ends with concrete outcome or action? Not a generic observation?
+- AI SLOP: Flag patterns like "In today's healthcare landscape..." or "It's a reminder that..."
+
+When drafting: ask for the raw story first if not provided. Short paragraphs, no bullets, no headers, specific details.
+When reviewing: score each dimension STRONG/MODERATE/WEAK, give one fix per weak area.
+Keep responses concise.`;
+
+const QUICK_PROMPTS = [
+  ["Help me approach a new office", "Southcoast update", "Draft an email", "Write a Jon update"],
+  ["Draft a post from a story", "Review my draft", "Hook ideas", "Post about a patient win"]
+];
+
+const WELCOME = [
+  "Hey Ian. What's going on — what do you need help with today?",
+  "What's the situation? Give me the raw story and I'll help you shape it into a post — or paste a draft and I'll coach it."
+];
+
+let activeTab = 0;
+let histories = [[], []];
+let isLoading = false;
+
+// --- API Key ---
+function getKey() { return localStorage.getItem('anthropic_key'); }
+function saveKey(k) { localStorage.setItem('anthropic_key', k); }
+function resetKey() {
+  localStorage.removeItem('anthropic_key');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('api-screen').style.display = 'flex';
+}
+
+document.getElementById('save-key-btn').onclick = () => {
+  const key = document.getElementById('api-key-input').value.trim();
+  if (!key.startsWith('sk-ant-')) {
+    document.getElementById('api-error').style.display = 'block';
+    return;
+  }
+  saveKey(key);
+  startApp();
+};
+
+document.getElementById('api-key-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('save-key-btn').click();
+});
+
+function startApp() {
+  document.getElementById('api-screen').style.display = 'none';
+  const app = document.getElementById('app');
+  app.style.display = 'flex';
+  renderQuickPrompts();
+  renderMessages();
+}
+
+// --- Tabs ---
+function switchTab(i) {
+  activeTab = i;
+  document.querySelectorAll('.tab').forEach((t, idx) => t.classList.toggle('active', idx === i));
+  document.getElementById('header-icon').textContent = i === 0 ? '💼' : '✏️';
+  document.getElementById('header-title').textContent = i === 0 ? 'Work Advisor' : 'LinkedIn Coach';
+  document.getElementById('msg-input').placeholder = i === 0
+    ? 'Ask anything about your accounts, documentation, approach...'
+    : 'Paste a draft to review, or describe a situation...';
+  renderQuickPrompts();
+  renderMessages();
+}
+
+// --- Quick Prompts ---
+function renderQuickPrompts() {
+  const container = document.getElementById('quick-prompts');
+  container.innerHTML = '';
+  QUICK_PROMPTS[activeTab].forEach(q => {
+    const btn = document.createElement('button');
+    btn.className = 'qp-btn';
+    btn.textContent = q;
+    btn.onclick = () => {
+      document.getElementById('msg-input').value = q;
+      autoResize();
+      document.getElementById('msg-input').focus();
+    };
+    container.appendChild(btn);
+  });
+}
+
+// --- Messages ---
+function renderMessages() {
+  const container = document.getElementById('messages');
+  container.innerHTML = '';
+
+  // Welcome message
+  addBubble('assistant', WELCOME[activeTab], container);
+
+  // History
+  histories[activeTab].forEach(m => addBubble(m.role, m.content, container));
+
+  if (isLoading) {
+    const row = document.createElement('div');
+    row.className = 'msg-row assistant';
+    row.id = 'typing-row';
+    row.innerHTML = `<div class="avatar">${activeTab === 0 ? '💼' : '✏️'}</div>
+      <div class="bubble assistant"><div class="typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`;
+    container.appendChild(row);
+  }
+
+  container.scrollTop = container.scrollHeight;
+}
+
+function addBubble(role, content, container) {
+  const row = document.createElement('div');
+  row.className = `msg-row ${role}`;
+  if (role === 'assistant') {
+    row.innerHTML = `<div class="avatar">${activeTab === 0 ? '💼' : '✏️'}</div><div class="bubble assistant">${escHtml(content)}</div>`;
+  } else {
+    row.innerHTML = `<div class="bubble user">${escHtml(content)}</div>`;
+  }
+  container.appendChild(row);
+}
+
+function escHtml(t) {
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+// --- Send ---
+async function sendMessage() {
+  const input = document.getElementById('msg-input');
+  const text = input.value.trim();
+  if (!text || isLoading) return;
+
+  const key = getKey();
+  if (!key) { resetKey(); return; }
+
+  histories[activeTab].push({ role: 'user', content: text });
+  input.value = '';
+  input.style.height = 'auto';
+  isLoading = true;
+  renderMessages();
+
+  const system = activeTab === 0 ? SYSTEM_ADVISOR : SYSTEM_LINKEDIN;
+  const messages = histories[activeTab].map(m => ({ role: m.role, content: m.content }));
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1000, system, messages })
+    });
+
+    const data = await res.json();
+    let reply;
+    if (data.error) {
+      reply = `Error: ${data.error.message}`;
+      // If auth error, remove bad key
+      if (res.status === 401) {
+        localStorage.removeItem('anthropic_key');
+        reply = 'Invalid API key — tap "Change Key" to update it.';
+      }
+    } else {
+      reply = data.content?.map(b => b.text || '').filter(Boolean).join('\n') || 'No response.';
+    }
+    histories[activeTab].push({ role: 'assistant', content: reply });
+  } catch (err) {
+    histories[activeTab].push({ role: 'assistant', content: `Network error: ${err.message}` });
+  }
+
+  isLoading = false;
+  renderMessages();
+}
+
+// --- Input handling ---
+const msgInput = document.getElementById('msg-input');
+
+msgInput.addEventListener('input', autoResize);
+msgInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+function autoResize() {
+  msgInput.style.height = 'auto';
+  msgInput.style.height = Math.min(msgInput.scrollHeight, 120) + 'px';
+}
+
+// --- Init ---
+if (getKey()) {
+  startApp();
+}
+</script>
+</body>
+</html>
